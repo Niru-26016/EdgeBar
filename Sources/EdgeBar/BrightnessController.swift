@@ -6,6 +6,7 @@ import Foundation
 /// for changing the built-in Apple Silicon panel backlight.
 final class BrightnessController {
     private typealias SetBrightness = @convention(c) (UInt32, Float) -> Int32
+    private typealias GetBrightness = @convention(c) (UInt32, UnsafeMutablePointer<Float>) -> Int32
     private let handle: UnsafeMutableRawPointer?
     private let setBrightness: SetBrightness?
 
@@ -23,6 +24,14 @@ final class BrightnessController {
 
     deinit {
         if let handle { dlclose(handle) }
+    }
+
+    func get() -> Float? {
+        guard let handle, let symbol = dlsym(handle, "DisplayServicesGetBrightness") else { return nil }
+        let read = unsafeBitCast(symbol, to: GetBrightness.self)
+        var value: Float = 0
+        guard read(CGMainDisplayID(), &value) == 0, value.isFinite else { return nil }
+        return value
     }
 
     @discardableResult

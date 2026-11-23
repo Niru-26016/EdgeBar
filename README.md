@@ -1,6 +1,6 @@
 # EdgeBar MVP
 
-EdgeBar is a menu bar prototype that maps a single-finger slide along the left trackpad edge to built-in display brightness and the right edge to system output volume. The touch must begin inside the outer 8% band; vertical position maps directly to 0–100%.
+EdgeBar is a menu bar prototype that maps a single-finger slide along the left trackpad edge to built-in display brightness and the right edge to system output volume. The touch must begin inside the outer 4% band; a slide of at least 2.5% of trackpad height lasting at least 100 ms activates adjustment. Further movement adjusts relative to the current system level. Taps and stationary touches do not change levels.
 
 ## Build status
 
@@ -22,3 +22,7 @@ Run `swift run --build-system native` from this directory. The app successfully 
 2. Measure edge coordinates, touch state transitions, orientation, accidental activation, and click/system-gesture interference on the actual MacBook trackpad.
 3. Tune activation width, smoothing, and release behavior from those observations.
 4. Add user-selectable edge mapping and a safe enable/disable control before considering background launch.
+
+## Haptic feedback
+
+An alignment pulse is requested when an edge activates and after each additional 10 percentage points of movement. Pulses are limited to one per 80 ms during sliding. Use the Haptic feedback toggle in the menu to turn it off. Feedback uses Apple’s public NSHapticFeedbackManager API and depends on a compatible Force Touch trackpad and system preferences. Physical feedback, including while another app is active, has not been validated.

@@ -41,8 +41,9 @@ struct EdgeBarMenu: View {
             }
 
             Divider()
+            Toggle("Haptic feedback", isOn: $model.hapticsEnabled)
             HStack {
-                Text("Edge zone: 8%")
+                Text("Edge zone: 4%")
                 Spacer()
                 Button("Quit") { NSApplication.shared.terminate(nil) }
                     .keyboardShortcut("q")
