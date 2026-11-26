@@ -27,18 +27,30 @@ struct EdgeBarMenu: View {
 
             Text(model.status).font(.caption).foregroundStyle(.secondary)
 
-            Divider()
-            Label("Left edge · Brightness", systemImage: "sun.max")
-                .font(.subheadline)
-            Slider(value: $model.brightnessPreview, in: 0...1) { editing in
-                if !editing { model.setBrightness(model.brightnessPreview) }
+            if !model.hasSystemHUD {
+                Button("Enable Native macOS Bar…") {
+                    model.requestSystemHUD()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             }
 
-            Label("Right edge · Volume", systemImage: "speaker.wave.2")
-                .font(.subheadline)
-            Slider(value: $model.volumePreview, in: 0...1) { editing in
-                if !editing { model.setVolume(model.volumePreview) }
+            Divider()
+            HStack {
+                Label("Left edge · Brightness", systemImage: "sun.max")
+                Spacer()
+                Text("\(Int((model.brightnessPreview * 100).rounded()))%")
+                    .foregroundStyle(.secondary)
             }
+            .font(.caption)
+
+            HStack {
+                Label("Right edge · Volume", systemImage: "speaker.wave.2")
+                Spacer()
+                Text("\(Int((model.volumePreview * 100).rounded()))%")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
 
             Divider()
             Toggle("Haptic feedback", isOn: $model.hapticsEnabled)
@@ -51,6 +63,9 @@ struct EdgeBarMenu: View {
             .font(.caption)
         }
         .padding(14)
-        .frame(width: 280)
+        .frame(width: 240)
+        .onAppear {
+            model.syncSystemLevels()
+        }
     }
 }

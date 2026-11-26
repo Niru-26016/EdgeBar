@@ -8,6 +8,7 @@ import OpenMultitouchSupport
 final class EdgeBarModel {
     var hapticsEnabled = true
     var isListening = false
+    var hasSystemHUD = false
     var status = "Waiting for trackpad input"
     var brightnessPreview = 0.5
     var volumePreview = 0.5
@@ -15,6 +16,8 @@ final class EdgeBarModel {
     private let manager = OMSManager.shared
     private let brightness = BrightnessController()
     private let volume = VolumeController()
+    private let osd = SystemOSD()
+    private let hud = HUDOverlay()
     private var streamTask: Task<Void, Never>?
     private var activeTouchID: Int32?
     private var activeSide: EdgeSide?
@@ -30,6 +33,27 @@ final class EdgeBarModel {
 
     init() {
         start()
+        syncSystemLevels()
+        hasSystemHUD = osd.isTrusted
+        if !hasSystemHUD {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.osd.requestAccessibilityPrompt()
+            }
+        }
+    }
+
+    func syncSystemLevels() {
+        if let b = brightness.get() { brightnessPreview = Double(b) }
+        if let v = volume.get() { volumePreview = Double(v) }
+        hasSystemHUD = osd.isTrusted
+    }
+
+    func requestSystemHUD() {
+        osd.requestAccessibilityPrompt()
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
+        hasSystemHUD = osd.isTrusted
     }
 
     func start() {
@@ -48,6 +72,7 @@ final class EdgeBarModel {
         brightnessPreview = value
         if brightness.set(Float(value)) {
             status = "Brightness adjusted"
+            if !osd.isTrusted { hud.showBrightness(value) }
         } else {
             status = "Brightness control unavailable on this display"
         }
@@ -57,16 +82,23 @@ final class EdgeBarModel {
         volumePreview = value
         volume.set(Float(value))
         status = "Volume adjusted"
+        if !osd.isTrusted { hud.showVolume(value) }
     }
 
     private func consume(_ touches: [OMSTouchData]) {
         let active = touches.filter { $0.state == .touching || $0.state == .making }
         if active.isEmpty {
+            if sliding {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                    self?.syncSystemLevels()
+                }
+            }
             activeTouchID = nil
             activeSide = nil
             lastHapticValue = nil
             sliding = false
             blockedUntilLift = false
+            osd.reset()
             return
         }
         guard !blockedUntilLift else { return }
@@ -106,6 +138,12 @@ final class EdgeBarModel {
             sliding = true
             slideValue = Double(current)
             lastY = y
+            hasSystemHUD = osd.isTrusted
+            if hasSystemHUD {
+                osd.beginGesture(currentValue: slideValue)
+            } else {
+                if side == .left { hud.showBrightness(slideValue) } else { hud.showVolume(slideValue) }
+            }
             updateHaptics(slideValue)
             return
         }
@@ -115,17 +153,40 @@ final class EdgeBarModel {
         slideValue = min(1, max(0, slideValue + delta))
         let value = slideValue
         updateHaptics(value)
+        hasSystemHUD = osd.isTrusted
+
         switch side {
         case .left:
-            brightnessPreview = value
-            _ = brightness.set(Float(value))
+            if hasSystemHUD {
+                if osd.updateBrightness(to: value) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in
+                        guard let self, let b = self.brightness.get() else { return }
+                        self.brightnessPreview = Double(b)
+                    }
+                }
+            } else {
+                brightnessPreview = value
+                _ = brightness.set(Float(value))
+                hud.showBrightness(value)
+            }
             status = "Adjusting brightness"
         case .right:
-            volumePreview = value
-            volume.set(Float(value))
+            if hasSystemHUD {
+                if osd.updateVolume(to: value) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in
+                        guard let self, let v = self.volume.get() else { return }
+                        self.volumePreview = Double(v)
+                    }
+                }
+            } else {
+                volumePreview = value
+                volume.set(Float(value))
+                hud.showVolume(value)
+            }
             status = "Adjusting volume"
         }
     }
+
     private func updateHaptics(_ value: Double) {
         guard value.isFinite else { return }
         let now = ProcessInfo.processInfo.systemUptime
