@@ -15,9 +15,15 @@ struct EdgeBarApp: App {
 
 struct EdgeBarMenu: View {
     @Bindable var model: EdgeBarModel
+    @Bindable var settings: EdgeBarSettings
+
+    init(model: EdgeBarModel) {
+        self.model = model
+        self.settings = model.settings
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: "slider.vertical.3")
                 Text("EdgeBar").font(.headline)
@@ -36,36 +42,78 @@ struct EdgeBarMenu: View {
             }
 
             Divider()
-            HStack {
-                Label("Left edge · Brightness", systemImage: "sun.max")
-                Spacer()
-                Text("\(Int((model.brightnessPreview * 100).rounded()))%")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.caption)
-
-            HStack {
-                Label("Right edge · Volume", systemImage: "speaker.wave.2")
-                Spacer()
-                Text("\(Int((model.volumePreview * 100).rounded()))%")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.caption)
+            Text("Edge Sliders").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+            EdgePickerRow(label: "Left edge", selection: $settings.leftEdgeAction, pct: model.levelPercent(for: settings.leftEdgeAction))
+            EdgePickerRow(label: "Top edge", selection: $settings.topEdgeAction, pct: model.levelPercent(for: settings.topEdgeAction))
+            EdgePickerRow(label: "Right edge", selection: $settings.rightEdgeAction, pct: model.levelPercent(for: settings.rightEdgeAction))
 
             Divider()
-            Toggle("Haptic feedback", isOn: $model.hapticsEnabled)
+            Text("Corner Double-Tap").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+            CornerPickerRow(label: "Top-left", selection: $settings.topLeftAction)
+            CornerPickerRow(label: "Top-right", selection: $settings.topRightAction)
+            CornerPickerRow(label: "Bottom-left", selection: $settings.bottomLeftAction)
+            CornerPickerRow(label: "Bottom-right", selection: $settings.bottomRightAction)
+
+            Divider()
+            Toggle("Haptic feedback", isOn: $settings.hapticsEnabled)
+                .font(.caption)
             HStack {
-                Text("Edge zone: 4%")
+                Text("Palm rejection & cursor freeze on")
+                    .foregroundStyle(.secondary)
                 Spacer()
                 Button("Quit") { NSApplication.shared.terminate(nil) }
                     .keyboardShortcut("q")
             }
-            .font(.caption)
+            .font(.caption2)
         }
         .padding(14)
-        .frame(width: 240)
+        .frame(width: 300)
         .onAppear {
             model.syncSystemLevels()
+        }
+    }
+}
+
+private struct EdgePickerRow: View {
+    let label: String
+    @Binding var selection: EdgeAction
+    let pct: String?
+
+    var body: some View {
+        HStack {
+            Text(label).font(.caption)
+            if let pct {
+                Text(pct).font(.caption2).foregroundStyle(.secondary).monospacedDigit()
+            }
+            Spacer()
+            Picker("", selection: $selection) {
+                ForEach(EdgeAction.allCases) { action in
+                    Text(action.rawValue).tag(action)
+                }
+            }
+            .labelsHidden()
+            .controlSize(.small)
+            .frame(width: 122)
+        }
+    }
+}
+
+private struct CornerPickerRow: View {
+    let label: String
+    @Binding var selection: CornerAction
+
+    var body: some View {
+        HStack {
+            Text(label).font(.caption)
+            Spacer()
+            Picker("", selection: $selection) {
+                ForEach(CornerAction.allCases) { action in
+                    Text(action.rawValue).tag(action)
+                }
+            }
+            .labelsHidden()
+            .controlSize(.small)
+            .frame(width: 162)
         }
     }
 }

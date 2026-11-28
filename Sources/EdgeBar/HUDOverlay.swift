@@ -1,10 +1,16 @@
 import AppKit
 import SwiftUI
 
+enum HUDKind: Sendable {
+    case display
+    case volume
+    case keyboard
+}
+
 @Observable
 final class HUDState: @unchecked Sendable {
     var value: Double = 0.5
-    var isBrightness: Bool = true
+    var kind: HUDKind = .display
 }
 
 struct HUDView: View {
@@ -12,11 +18,17 @@ struct HUDView: View {
     private let totalSegments = 16
 
     private var leftIcon: String {
-        if state.isBrightness { return "sun.max.fill" }
-        if state.value <= 0.001 { return "speaker.slash.fill" }
-        if state.value < 0.33 { return "speaker.wave.1.fill" }
-        if state.value < 0.66 { return "speaker.wave.2.fill" }
-        return "speaker.wave.3.fill"
+        switch state.kind {
+        case .display:
+            return "sun.max.fill"
+        case .keyboard:
+            return state.value <= 0.001 ? "light.min" : "light.max"
+        case .volume:
+            if state.value <= 0.001 { return "speaker.slash.fill" }
+            if state.value < 0.33 { return "speaker.wave.1.fill" }
+            if state.value < 0.66 { return "speaker.wave.2.fill" }
+            return "speaker.wave.3.fill"
+        }
     }
 
     var body: some View {
@@ -60,13 +72,19 @@ final class HUDOverlay {
     private var hideTask: Task<Void, Never>?
 
     func showBrightness(_ value: Double) {
-        state.isBrightness = true
-        state.value = max(0, min(1, value))
-        present()
+        show(kind: .display, value: value)
     }
 
     func showVolume(_ value: Double) {
-        state.isBrightness = false
+        show(kind: .volume, value: value)
+    }
+
+    func showKeyboardBrightness(_ value: Double) {
+        show(kind: .keyboard, value: value)
+    }
+
+    private func show(kind: HUDKind, value: Double) {
+        state.kind = kind
         state.value = max(0, min(1, value))
         present()
     }

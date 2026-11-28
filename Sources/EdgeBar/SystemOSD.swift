@@ -8,6 +8,12 @@ private let keySoundUp: Int32 = 0
 private let keySoundDown: Int32 = 1
 private let keyBrightnessUp: Int32 = 2
 private let keyBrightnessDown: Int32 = 3
+private let keyMute: Int32 = 7
+private let keyPlay: Int32 = 16
+private let keyNext: Int32 = 17
+private let keyPrevious: Int32 = 18
+private let keyIlluminationUp: Int32 = 21
+private let keyIlluminationDown: Int32 = 22
 
 /// Posts standard 1/16th HID media key events through IOHIDSystem so every step
 /// matches macOS's 16-segment MenuBarAgent bar 1:1 with zero modifier interference.
@@ -59,6 +65,22 @@ final class SystemOSD {
     @discardableResult
     func updateVolume(to value: Double) -> Bool {
         emitSteps(to: value, upKey: keySoundUp, downKey: keySoundDown)
+    }
+
+    @discardableResult
+    func updateKeyboardBrightness(to value: Double) -> Bool {
+        emitSteps(to: value, upKey: keyIlluminationUp, downKey: keyIlluminationDown)
+    }
+
+    @discardableResult func toggleMute() -> Bool { postSystemKey(keyMute) }
+    @discardableResult func playPause() -> Bool { postSystemKey(keyPlay) }
+    @discardableResult func nextTrack() -> Bool { postSystemKey(keyNext) }
+    @discardableResult func previousTrack() -> Bool { postSystemKey(keyPrevious) }
+
+    private func postSystemKey(_ keyCode: Int32) -> Bool {
+        guard isTrusted else { return false }
+        postKey(keyCode)
+        return true
     }
 
     private func emitSteps(to value: Double, upKey: Int32, downKey: Int32) -> Bool {

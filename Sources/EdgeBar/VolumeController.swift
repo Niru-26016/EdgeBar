@@ -19,6 +19,26 @@ struct VolumeController {
         )
     }
 
+    /// Toggles system mute directly and returns the resulting effective scalar volume (0.0 when muted).
+    @discardableResult
+    func toggleMute() -> Float? {
+        guard let device = defaultOutputDevice() else { return nil }
+        var mute: UInt32 = 0
+        var muteSize = UInt32(MemoryLayout<UInt32>.size)
+        var muteAddress = propertyAddress(kAudioDevicePropertyMute)
+        guard AudioObjectGetPropertyData(device, &muteAddress, 0, nil, &muteSize, &mute) == noErr else {
+            return nil
+        }
+        var nextMute: UInt32 = mute == 0 ? 1 : 0
+        guard AudioObjectSetPropertyData(
+            device, &muteAddress, 0, nil,
+            UInt32(MemoryLayout<UInt32>.size), &nextMute
+        ) == noErr else {
+            return nil
+        }
+        return get()
+    }
+
     func get() -> Float? {
         guard let device = defaultOutputDevice() else { return nil }
 
